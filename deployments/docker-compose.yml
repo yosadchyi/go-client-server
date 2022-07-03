@@ -1,0 +1,52 @@
+services:
+  localstack:
+    container_name: aws_sqs
+    hostname: sqs
+    image: localstack/localstack:latest
+    environment:
+      - AWS_ACCESS_KEY=access
+      - AWS_SECRET_ACCESS_KEY=secret
+      - AWS_DEFAULT_REGION=eu-central-1
+      - EDGE_PORT=4566
+      - SERVICES=sqs
+    ports:
+      - '4566:4566'
+    healthcheck:
+      test: [ "CMD-SHELL", "awslocal sqs list-queues" ]
+      timeout: 5s
+      interval: 10s
+      retries: 5
+    volumes:
+      - "${TMPDIR:-/tmp/localstack}:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - ./localstack:/docker-entrypoint-initaws.d/
+  server:
+    build:
+      context: ..
+    environment:
+      - AWS_ACCESS_KEY=access
+      - AWS_SECRET_ACCESS_KEY=secret
+      - AWS_DEFAULT_REGION=eu-central-1
+      - AWS_ENDPOINT=http://localstack:4566/
+    command: run
+    restart: always
+    entrypoint: "/server -queue-url http://localstack:4566/000000000000/queue"
+    depends_on:
+      localstack:
+        condition: service_healthy
+  client:
+    build:
+      context: ..
+    environment:
+      - AWS_ACCESS_KEY=access
+      - AWS_SECRET_ACCESS_KEY=secret
+      - AWS_DEFAULT_REGION=eu-central-1
+      - AWS_ENDPOINT=http://localstack:4566/
+    command: run
+    restart: always
+    volumes:
+      - ../test:/test/
+    entrypoint: "/client -queue-url http://localstack:4566/000000000000/queue -input-file=/test/data.txt"
+    depends_on:
+      localstack:
+        condition: service_healthy
