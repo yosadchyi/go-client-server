@@ -35,6 +35,11 @@ func main() {
 		1,
 		"number of seconds to wait for SQS messages, bigger value decreases CPU load",
 	)
+	logFileName := flag.String(
+		"log-file",
+		"/tmp/log.txt",
+		"log file to store server log",
+	)
 	flag.Parse()
 
 	ctx, cancelFn := context.WithCancel(context.Background())
@@ -47,6 +52,11 @@ func main() {
 		log.Fatalf("failed to load default config %s", err)
 	}
 
+	logFile, err := os.OpenFile(*logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModeAppend)
+	if err != nil {
+		log.Fatalf("failed to open log file %s", err)
+	}
+
 	sqsSvc := sqs.NewFromConfig(cfg)
 	messages := make(chan *message.Any, 128)
 	reader := server.NewReader(sqsSvc, *queueUrl, messages)
@@ -54,7 +64,7 @@ func main() {
 	processor := server.NewProcessor(messages)
 
 	for i := 1; i <= *parallelismDegree; i++ {
-		go processor.Run(ctx, server.NewProcessFn(i, storage))
+		go processor.Run(ctx, server.NewProcessFn(i, storage, logFile))
 	}
 
 	sig := make(chan os.Signal, 1)
@@ -69,4 +79,8 @@ func main() {
 	log.Printf("waiting for messages on %s...", *queueUrl)
 
 	reader.Run(ctx, int32(*waitTimeSeconds))
+
+	if err := logFile.Close(); err != nil {
+		log.Fatalf("error closing log file %s", err.Error())
+	}
 }

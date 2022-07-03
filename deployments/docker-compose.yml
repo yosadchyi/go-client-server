@@ -30,7 +30,9 @@ services:
       - AWS_ENDPOINT=http://localstack:4566/
     command: run
     restart: always
-    entrypoint: "/server -queue-url http://localstack:4566/000000000000/queue"
+    entrypoint: "/server -queue-url http://localstack:4566/000000000000/queue -log-file=/data/log.txt"
+    volumes:
+      - "../data/:/data"
     depends_on:
       localstack:
         condition: service_healthy
