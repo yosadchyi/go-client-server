@@ -29,6 +29,9 @@ func (p *Processor) Run(ctx context.Context) {
 			return
 
 		case line := <-p.lines:
+			if line == "EOF" {
+				return
+			}
 			switch err := p.executor.ExecuteCmd(ctx, line); err {
 			case UnknownCommand:
 				p.responder.Error(err)

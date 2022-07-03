@@ -69,6 +69,9 @@ func main() {
 		for s.Scan() {
 			lines <- s.Text()
 		}
+		if !isInteractive {
+			lines <- "EOF"
+		}
 	}()
 
 	executor := client.NewExecutor(file, svc, *queueUrl)
