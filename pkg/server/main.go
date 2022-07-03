@@ -14,28 +14,31 @@ func NewProcessFn(id int, storage Storage) func(*message.Any) {
 	return func(m *message.Any) {
 		switch {
 		case m.Add != nil:
-			storage.AddItem(m.Add.Data)
-			log.Printf("%s: adding item %s", name, m.Add.Data)
+			storage.AddItem(Item{
+				K: m.Add.Key,
+				V: m.Add.Data,
+			})
+			log.Printf("%s: adding item %s with key %s", name, m.Add.Data, m.Add.Key)
 		case m.Remove != nil:
-			id := m.Remove.ItemID
-			err := storage.RemoveItem(id)
+			key := m.Remove.Key
+			err := storage.RemoveItem(key)
 			if err != nil {
-				log.Printf("%s: can't remove item %d", name, id)
+				log.Printf("%s: can't remove item with key %s", name, key)
 			} else {
-				log.Printf("%s: removing item %d", name, id)
+				log.Printf("%s: removing item with key %s", name, key)
 			}
 		case m.GetItem != nil:
-			id := m.GetItem.ItemID
-			item, err := storage.GetItem(id)
+			key := m.GetItem.Key
+			item, err := storage.GetItem(key)
 			if err != nil {
-				log.Printf("%s: can't get item %d", name, id)
+				log.Printf("%s: can't get item with key %s", name, key)
 			}
-			log.Printf("%s: Get(%d): %s", name, id, item)
+			log.Printf("%s: Get(%s): %s", name, key, item.V)
 		case m.GetAllItems != nil:
 			items := storage.GetAllItems()
 			log.Printf("%s: listing all items:", name)
-			for i, item := range items {
-				log.Printf("%s: %d: %s", name, i, item)
+			for _, item := range items {
+				log.Printf("%s: (%s, %s)", name, item.K, item.V)
 			}
 		}
 	}

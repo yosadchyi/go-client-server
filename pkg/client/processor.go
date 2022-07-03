@@ -36,7 +36,7 @@ func (p *Processor) Run(ctx context.Context) {
 			case UnknownCommand:
 				p.responder.Error(err)
 				p.responder.Help()
-			case IntegerValueExpected:
+			case KeyValueExpected:
 				p.responder.Error(err)
 				p.responder.Help()
 			case nil:

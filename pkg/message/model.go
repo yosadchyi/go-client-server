@@ -22,19 +22,20 @@ type Base struct {
 // Add is a message representing addItem command
 type Add struct {
 	Base
+	Key  string `json:"key"`
 	Data string `json:"data"`
 }
 
 // Remove is a message representing removeItem command
 type Remove struct {
 	Base
-	ItemID int `json:"itemId"`
+	Key string `json:"itemId"`
 }
 
 // Get is a message representing getItem command
 type Get struct {
 	Base
-	ItemID int `json:"itemId"`
+	Key string `json:"itemId"`
 }
 
 // GetAll is a message representing getAllItems command
@@ -51,11 +52,12 @@ type Any struct {
 	GetAllItems *GetAll
 }
 
-func NewAdd(data string) Add {
+func NewAdd(key, data string) Add {
 	return Add{
 		Base: Base{
 			Operation: AddOp,
 		},
+		Key:  key,
 		Data: data,
 	}
 }
@@ -64,12 +66,12 @@ func (m Add) ToJSON() *string {
 	return util.ToJSON(m)
 }
 
-func NewRemove(itemID int) Remove {
+func NewRemove(key string) Remove {
 	return Remove{
 		Base: Base{
 			Operation: RemoveOp,
 		},
-		ItemID: itemID,
+		Key: key,
 	}
 }
 
@@ -77,12 +79,12 @@ func (m Remove) ToJSON() *string {
 	return util.ToJSON(m)
 }
 
-func NewGet(itemID int) Get {
+func NewGet(key string) Get {
 	return Get{
 		Base: Base{
 			Operation: GetItemOp,
 		},
-		ItemID: itemID,
+		Key: key,
 	}
 }
 

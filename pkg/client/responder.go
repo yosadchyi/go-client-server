@@ -36,12 +36,12 @@ func (r *interactiveResponder) Bye() {
 
 func (r *interactiveResponder) Help() {
 	fmt.Println(`Commands:
-	+ITEM
-		add item with data 'ITEM'
-	-INDEX
-		remove item with index INDEX, where index is an integer number
-	<INDEX
-		get item with index INDEX, where index is an integer number
+	+KEY:VALUE
+		add item with key KEY and data DATA
+	-KEY
+		remove item with index KEY, where index is an integer number
+	<KEY
+		get item with index KEY, where index is an integer number
 	*
 		list all items
 	^C

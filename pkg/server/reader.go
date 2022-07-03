@@ -9,7 +9,7 @@ import (
 	"github.com/yosadchyi/go-client-server/pkg/message"
 )
 
-// Reader is responsible for reading data from SQS and passing it to messages channel
+// Reader is responsible for reading ordered from SQS and passing it to messages channel
 type Reader struct {
 	sqsClient *sqs.Client
 	queueUrl  string

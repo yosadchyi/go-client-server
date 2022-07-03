@@ -50,7 +50,7 @@ func main() {
 	sqsSvc := sqs.NewFromConfig(cfg)
 	messages := make(chan *message.Any, 128)
 	reader := server.NewReader(sqsSvc, *queueUrl, messages)
-	storage := server.NewRWLockedStorage(server.NewSliceStorage(128))
+	storage := server.NewRWLockedStorage(server.NewMemoryStorage())
 	processor := server.NewProcessor(messages)
 
 	for i := 1; i <= *parallelismDegree; i++ {

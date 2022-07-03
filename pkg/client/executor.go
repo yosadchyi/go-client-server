@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
-	"strconv"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	IntegerValueExpected = errors.New("integer value expected")
-	UnknownCommand       = errors.New("unknown command")
+	KeyValueExpected = errors.New("key/value expected")
+	UnknownCommand   = errors.New("unknown command")
 )
 
 // Executor is and executor of the commands, provided as text
@@ -42,19 +42,15 @@ func (e *Executor) ExecuteCmd(ctx context.Context, line string) error {
 
 	switch cmd {
 	case '+':
-		msg = message.NewAdd(data)
+		if idx := strings.Index(data, ":"); idx >= 0 {
+			msg = message.NewAdd(data[:idx], data[idx+1:])
+		} else {
+			return KeyValueExpected
+		}
 	case '-':
-		if value, err := strconv.Atoi(data); err != nil {
-			return IntegerValueExpected
-		} else {
-			msg = message.NewRemove(value)
-		}
+		msg = message.NewRemove(data)
 	case '<':
-		if value, err := strconv.Atoi(data); err != nil {
-			return IntegerValueExpected
-		} else {
-			msg = message.NewGet(value)
-		}
+		msg = message.NewGet(data)
 	case '*':
 		msg = message.NewGetAll()
 	}

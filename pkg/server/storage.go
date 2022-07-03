@@ -6,18 +6,24 @@ import (
 	"sync"
 )
 
-// Storage defines interface for data storage
+// Item represents stored item
+type Item struct {
+	K string
+	V string
+}
+
+// Storage defines interface for ordered storage
 type Storage interface {
-	// AddItem adds item to storage
-	AddItem(item string)
-	// RemoveItem removes item from storage
-	RemoveItem(itemID int) error
-	// GetItem returns item with given id from storage
-	GetItem(itemID int) (string, error)
+	// AddItem adds Item to storage
+	AddItem(item Item)
+	// RemoveItem removes Item from storage
+	RemoveItem(key string) error
+	// GetItem returns Item with given id from storage
+	GetItem(key string) (*Item, error)
 	// GetAllItems returns items in storage, new slice created every time
-	GetAllItems() []string
-	// Iterate allows to iterato over data in storage, can be used for processing which does not involve blocking IO
-	Iterate(accept func(int, string))
+	GetAllItems() []Item
+	// Iterate allows to iterato over ordered in storage, can be used for processing which does not involve blocking IO
+	Iterate(accept func(Item))
 }
 
 type rwLockedStorage struct {
@@ -33,80 +39,112 @@ func NewRWLockedStorage(storage Storage) *rwLockedStorage {
 	}
 }
 
-func (s *rwLockedStorage) AddItem(item string) {
+func (s *rwLockedStorage) AddItem(item Item) {
 	s.rwLock.Lock()
 	s.storage.AddItem(item)
 	s.rwLock.Unlock()
 }
 
-func (s *rwLockedStorage) RemoveItem(itemID int) error {
+func (s *rwLockedStorage) RemoveItem(key string) error {
 	s.rwLock.Lock()
-	err := s.storage.RemoveItem(itemID)
+	err := s.storage.RemoveItem(key)
 	s.rwLock.Unlock()
 	return err
 }
 
-func (s *rwLockedStorage) GetItem(itemID int) (string, error) {
+func (s *rwLockedStorage) GetItem(key string) (*Item, error) {
 	s.rwLock.RLock()
-	item, err := s.storage.GetItem(itemID)
+	item, err := s.storage.GetItem(key)
 	s.rwLock.RUnlock()
 	return item, err
 }
 
-func (s *rwLockedStorage) GetAllItems() []string {
+func (s *rwLockedStorage) GetAllItems() []Item {
 	s.rwLock.RLock()
 	items := s.storage.GetAllItems()
 	s.rwLock.RUnlock()
 	return items
 }
 
-func (s *rwLockedStorage) Iterate(accept func(int, string)) {
+func (s *rwLockedStorage) Iterate(accept func(Item)) {
 	s.rwLock.RLock()
 	s.storage.Iterate(accept)
 	s.rwLock.RUnlock()
 }
 
-type arrayStorage struct {
-	data []string
+type entry struct {
+	prev *entry
+	next *entry
+	item *Item
 }
 
-// NewSliceStorage returns storage backed by slice, item id is an index in slice
-func NewSliceStorage(cap uint) *arrayStorage {
-	return &arrayStorage{
-		data: make([]string, 0, cap),
+type memoryStorage struct {
+	head    *entry
+	indexed map[string]*entry
+}
+
+// NewMemoryStorage returns storage backed by slice, Item id is an index in slice
+func NewMemoryStorage() *memoryStorage {
+	head := &entry{}
+	head.next = head
+	head.prev = head
+
+	return &memoryStorage{
+		head:    head,
+		indexed: make(map[string]*entry),
 	}
 }
 
-func (s *arrayStorage) AddItem(item string) {
-	s.data = append(s.data, item)
+func (s *memoryStorage) AddItem(item Item) {
+	if _, ok := s.indexed[item.K]; ok {
+		// we know that index exists
+		_ = s.RemoveItem(item.K)
+	}
+	entry := &entry{
+		prev: s.head.prev,
+		next: s.head,
+		item: &item,
+	}
+	s.head.prev.next = entry
+	s.head.prev = entry
+
+	s.indexed[item.K] = entry
 }
 
-func (s *arrayStorage) RemoveItem(itemID int) error {
-	if itemID < 0 || itemID >= len(s.data) {
-		return errors.New(fmt.Sprintf("index out of bounds: %d", itemID))
+func (s *memoryStorage) RemoveItem(key string) error {
+	entry, ok := s.indexed[key]
+
+	if !ok {
+		return errors.New(fmt.Sprintf("key `%s' not found", key))
 	}
 
-	s.data = append(s.data[:itemID], s.data[itemID+1:]...)
+	delete(s.indexed, key)
+	entry.prev.next = entry.next
+	entry.next.prev = entry.prev
 
 	return nil
 }
 
-func (s *arrayStorage) GetItem(itemID int) (string, error) {
-	if itemID < 0 || itemID >= len(s.data) {
-		return "", errors.New(fmt.Sprintf("index out of bounds: %d", itemID))
+func (s *memoryStorage) GetItem(key string) (*Item, error) {
+	entry, ok := s.indexed[key]
+
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("key `%s' not found", key))
 	}
 
-	return s.data[itemID], nil
+	return entry.item, nil
 }
 
-func (s *arrayStorage) GetAllItems() []string {
-	result := make([]string, len(s.data))
-	copy(result, s.data)
+func (s *memoryStorage) GetAllItems() []Item {
+	result := make([]Item, 0, len(s.indexed))
+	for e := s.head.next; e != s.head; e = e.next {
+		result = append(result, *e.item)
+	}
 	return result
 }
 
-func (s *arrayStorage) Iterate(accept func(int, string)) {
-	for i, v := range s.data {
-		accept(i, v)
+func (s *memoryStorage) Iterate(accept func(Item)) {
+	for e := s.head.next; e != s.head; e = e.next {
+		accept(*e.item)
 	}
 }
