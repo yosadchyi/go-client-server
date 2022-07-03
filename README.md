@@ -54,3 +54,18 @@ Usage of ./client:
   -queue-url string
         SQS queue
 ```
+
+## Syntax of client input lines
+
+```text
+    +ITEM
+            add item with data 'ITEM'
+    -INDEX
+            remove item with index INDEX, where index is an integer number
+    <INDEX
+            get item with index INDEX, where index is an integer number
+    *
+            list all items
+    EOF or ^C
+            quit
+```
