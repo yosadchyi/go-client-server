@@ -137,7 +137,10 @@ func (s *memoryStorage) GetItem(key string) (*Item, error) {
 		return nil, errors.New(fmt.Sprintf("key `%s' not found", key))
 	}
 
-	return entry.item, nil
+	// return item copy
+	item := *entry.item
+
+	return &item, nil
 }
 
 func (s *memoryStorage) GetAllItems() []Item {
