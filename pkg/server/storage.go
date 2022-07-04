@@ -122,6 +122,11 @@ func (s *memoryStorage) RemoveItem(key string) error {
 	entry.prev.next = entry.next
 	entry.next.prev = entry.prev
 
+	// cleanup references from removed node
+	entry.prev = nil
+	entry.next = nil
+	entry.item = nil
+
 	return nil
 }
 
